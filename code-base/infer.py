@@ -47,7 +47,11 @@ def generator_tensor_dict(image_path, mask_path, args):
     image = cv2.imread(image_path)
     mask = cv2.imread(mask_path, 0)
 
-    mask = (mask >= args.guidance_thres).astype(np.float32) ### only keep FG part of trimap
+    if mask.shape[0]!=image.shape[0] or mask.shape[1]!=image.shape[1] :
+        mask = cv2.resize(mask,(image.shape[1],image.shape[0]))
+        mask = (mask > 0).astype(np.float32)
+    else:
+        mask = (mask >= args.guidance_thres).astype(np.float32) ### only keep FG part of trimap
     
     #mask = mask.astype(np.float32) / 255.0 ### soft trimap
 
@@ -97,12 +101,12 @@ if __name__ == '__main__':
     print('Torch Version: ', torch.__version__)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='config/MGMatting-DIM-100k.toml')
-    parser.add_argument('--checkpoint', type=str, default='checkpoints/MGMatting-DIM-100k/latest_model.pth',
+    parser.add_argument('--config', type=str, default='/home/lab505/srh/MGMatting/code-base/config/MGMatting-DIM-100k.toml')
+    parser.add_argument('--checkpoint', type=str, default='pretrain/latest-model.pth',
                         help="path of checkpoint")
     parser.add_argument('--image-dir', type=str, default='/export/ccvl12b/qihang/MGMatting/data/Combined_Dataset/Test_set/merged/', help="input image dir")
     parser.add_argument('--mask-dir', type=str, default='/export/ccvl12b/qihang/MGMatting/data/Combined_Dataset/Test_set/trimaps/', help="input mask dir")
-    parser.add_argument('--image-ext', type=str, default='.png', help="input image ext")
+    parser.add_argument('--image-ext', type=str, default='.jpg', help="input image ext")
     parser.add_argument('--mask-ext', type=str, default='.png', help="input mask ext")
     parser.add_argument('--output', type=str, default='predDIM/', help="output dir")
     parser.add_argument('--guidance-thres', type=int, default=128, help="guidance input threshold")
