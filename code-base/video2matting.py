@@ -124,6 +124,40 @@ def get_resized_mask(mask,image):
     # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask * 255)
     return mask
 
+def get_composited_image(alpha,image,data_path,id):
+    save_dir_foreground = os.path.join(data_path, "foreground")
+    if not os.path.exists(save_dir_foreground):
+        os.mkdir(save_dir_foreground)
+    save_dir_composition = os.path.join(data_path, "composition")
+    if not os.path.exists(save_dir_composition):
+        os.mkdir(save_dir_composition)
+
+    # read gray
+    h,w,c=image.shape
+    b,g,r=cv2.split(image)
+
+    # extract fg
+    fg=np.zeros((4,h,w),dtype=image.dtype)
+    fg[0][0:h,0:w] = b
+    fg[1][0:h,0:w] = g
+    fg[2][0:h,0:w] = r
+    fg[3][0:h,0:w] = alpha
+
+    cv2.imwrite(os.path.join(save_dir_foreground,str(id).zfill(5)+'.jpg'),cv2.merge(fg))
+    # generate bg
+    bg=np.zeros((3,h,w),dtype = image.dtype)
+    bg[1][0:h,0:w] = 255
+    # composite fg and bg
+    comp=np.zeros((3,h,w),dtype=image.dtype)
+    for i in range(3):
+        comp[i][:,:]=bg[i][:,:]*(255.0-alpha)/255
+        comp[i][:,:]+=np.array(image[:,:,i]*(alpha/255.0),dtype=np.uint8)
+    composited=cv2.merge(comp)
+    cv2.imwrite(os.path.join(save_dir_composition,str(i).zfill(5)+'.jpg'),composited)
+
+    return composited
+
+
 
 if __name__ == '__main__':
     print('Torch Version: ', torch.__version__)
@@ -191,6 +225,8 @@ if __name__ == '__main__':
     if not os.path.exists(save_dir_dilated_mask):
         os.mkdir(save_dir_dilated_mask)
 
+
+
     # save path
     save_path_a = os.path.join(data_path,"alpha_pred.mp4")
     save_path_m = os.path.join(data_path,"mask.mp4")
@@ -225,6 +261,7 @@ if __name__ == '__main__':
 
         image_dict=generator_tensor_dict(f,mask,args)
         alpha_pred=single_inference(model,image_dict,post_process=args.post_process)
+        print("inference alpha shape:", alpha_pred.shape)
         # alpha_pred[dilated_mask == 0] = 0
         alpha_pred[mask == 0] = 0
         alpha_pred=cv2.cvtColor(alpha_pred,cv2.COLOR_GRAY2BGR)
