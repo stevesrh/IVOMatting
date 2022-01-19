@@ -29,6 +29,9 @@ def single_inference(model, image_dict, post_process=False):
         weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred, rand_width=CONFIG.model.self_refine_width2, train_mode=False)
         alpha_pred[weight_os1>0] = alpha_pred_os1[weight_os1>0]
 
+        # #clean fg and bg
+        # alpha_pred[mask == 0] = 0
+
 
         h, w = alpha_shape
         alpha_pred = alpha_pred[0, 0, ...].data.cpu().numpy()

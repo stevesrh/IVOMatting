@@ -12,6 +12,14 @@ import torch
 CODEC = "mp4v"
 # SAVE_EXT = "mp4"
 
+def gen_dilated_mask(mask, ksize=13, iteration=10):
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (ksize, ksize))
+    dilated = cv2.dilate(mask, kernel, iterations=iteration)
+    # eroded = cv2.erode(mask, kernel, iterations=iteration)
+    dilated_mask = np.zeros(mask.shape)
+    dilated_mask[dilated >= 255] = 255
+    return dilated_mask
+
 def single_inference(model, image_dict, post_process=False):
     with torch.no_grad():
         image, mask = image_dict['image'], image_dict['mask']
@@ -30,6 +38,13 @@ def single_inference(model, image_dict, post_process=False):
                                                         train_mode=False)
         alpha_pred[weight_os1 > 0] = alpha_pred_os1[weight_os1 > 0]
 
+        #clean fg and bg
+        # mask_argmax = mask.argmax(dim=2, keepdim=True)
+        # alpha_pred[mask_argmax == 0] = 0
+        # alpha_pred[mask_argmax == 1] = 1
+        # dilated_mask = gen_dilated_mask(mask)
+        # alpha_pred[dilated_mask == 0] = 0
+
         h, w = alpha_shape
         alpha_pred = alpha_pred[0, 0, ...].data.cpu().numpy()
         if post_process:
@@ -41,19 +56,18 @@ def single_inference(model, image_dict, post_process=False):
         return alpha_pred
 
 
-def generator_tensor_dict(video_frame, mask_path, args, id):
+def generator_tensor_dict(video_frame, mask, args):
     # read images
     image = video_frame
-    mask = cv2.imread(mask_path, 0)
-    if mask.shape[0] != image.shape[0] or mask.shape[1] != image.shape[1]:
-        mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
-        # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask)
-        mask = (mask > 0).astype(np.float32)
-    else:
-        mask = (mask >= args.guidance_thres).astype(np.float32)  ### only keep FG part of trimap
-    cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask*200)
+    # mask = cv2.imread(mask_path, 0)
+    # if mask.shape[0] != image.shape[0] or mask.shape[1] != image.shape[1]:
+    #     mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
+    #     # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask)
+    #     mask = (mask > 0).astype(np.float32)
+    # else:
+    #     mask = (mask >= args.guidance_thres).astype(np.float32)  ### only keep FG part of trimap
+    # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask*255)
     # mask = mask.astype(np.float32) / 255.0 ### soft trimap
-    cv2.imwrite(os.path.join(save_dir_v_frame,str(id).zfill(5)+'.jpg'),image)
     # cv2.imwrite(os.path.join(save_dir_resize_mask,str(id).zfill(5)+'.jpg'),mask)
     print("mask_grey_size:", mask.shape)
     print("video_frame_size:",video_frame.shape)
@@ -98,6 +112,18 @@ def generator_tensor_dict(video_frame, mask_path, args, id):
     sample['image'], sample['mask'] = sample['image'][None, ...], sample['mask'][None, ...]
 
     return sample
+
+
+def get_resized_mask(mask,image):
+    if mask.shape[0] != image.shape[0] or mask.shape[1] != image.shape[1]:
+        mask = cv2.resize(mask, (image.shape[1], image.shape[0]))
+        # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask)
+        mask = (mask > 0).astype(np.float32)
+    else:
+        mask = (mask >= args.guidance_thres).astype(np.float32)  ### only keep FG part of trimap
+    # cv2.imwrite(os.path.join(save_dir_resize_mask, str(id).zfill(5) + '.jpg'), mask * 255)
+    return mask
+
 
 if __name__ == '__main__':
     print('Torch Version: ', torch.__version__)
@@ -161,6 +187,9 @@ if __name__ == '__main__':
     save_dir_pred_alpha = os.path.join(data_path, "pred_alpha")
     if not os.path.exists(save_dir_pred_alpha):
         os.mkdir(save_dir_pred_alpha)
+    save_dir_dilated_mask = os.path.join(data_path, "dilated_alpha")
+    if not os.path.exists(save_dir_dilated_mask):
+        os.mkdir(save_dir_dilated_mask)
 
     # save path
     save_path_a = os.path.join(data_path,"alpha_pred.mp4")
@@ -180,13 +209,24 @@ if __name__ == '__main__':
         f_ret,f=v_cap.read()
         if f_ret==False or f is None :
             break
+        cv2.imwrite(os.path.join(save_dir_v_frame, str(i).zfill(5) + '.jpg'), f)
         #  read mask frame based on frame_id
         m_path=os.path.join(data_path,'mask',str(i).zfill(5)+'.png')
-        m = cv2.imread(m_path)
+        m = cv2.imread(m_path,0)
+        print("mask:", m.shape, "width:", m.shape[1], "height:", m.shape[0])
+        # resized mask
+        mask =get_resized_mask(m,f)
+        # mask = mask*255
+        cv2.imwrite(os.path.join(save_dir_resize_mask, str(i).zfill(5) + '.jpg'), mask*255)
+        print("resized_mask:", mask.shape, "width:", mask.shape[1], "height:", mask.shape[0])
+        # dilate mask
+        dilated_mask = gen_dilated_mask(mask*255)
+        cv2.imwrite(os.path.join(save_dir_dilated_mask, str(i).zfill(5) + '.jpg'), dilated_mask)
 
-        print("mask:",m.shape,"width:",m.shape[1],"height:",m.shape[0])
-        image_dict=generator_tensor_dict(f,m_path,args,i)
+        image_dict=generator_tensor_dict(f,mask,args)
         alpha_pred=single_inference(model,image_dict,post_process=args.post_process)
+        # alpha_pred[dilated_mask == 0] = 0
+        alpha_pred[mask == 0] = 0
         alpha_pred=cv2.cvtColor(alpha_pred,cv2.COLOR_GRAY2BGR)
         cv2.imwrite(os.path.join(save_dir_pred_alpha, str(i).zfill(5)+'.jpg'), alpha_pred)
         print("alpha size:",alpha_pred.shape)
