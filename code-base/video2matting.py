@@ -31,13 +31,17 @@ def single_inference(model, image_dict, post_process=False):
 
         ### refinement
         alpha_pred = alpha_pred_os8.clone().detach()
+        print("alpha pred",alpha_pred.shape)
         weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred, rand_width=CONFIG.model.self_refine_width1,
                                                         train_mode=False)
+        print("weight_os4",weight_os4.shape)
         alpha_pred[weight_os4 > 0] = alpha_pred_os4[weight_os4 > 0]
+        print("alpha pred",alpha_pred.shape)
         weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred, rand_width=CONFIG.model.self_refine_width2,
                                                         train_mode=False)
+        print("weight_os1", weight_os1.shape)
         alpha_pred[weight_os1 > 0] = alpha_pred_os1[weight_os1 > 0]
-
+        print("alpha pred",alpha_pred.shape)
         #clean fg and bg
         # mask_argmax = mask.argmax(dim=2, keepdim=True)
         # alpha_pred[mask_argmax == 0] = 0
@@ -165,7 +169,7 @@ if __name__ == '__main__':
 
     parser=argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default='/home/lab505/srh/MGMatting/code-base/config/MGMatting-DIM-Fortrain.toml')
-    parser.add_argument('--checkpoint', type=str, default='pretrain/latest_model_unzip.pth')
+    parser.add_argument('--checkpoint', type=str, default='/home/lab505/srh/MGMatting/code-base/checkpoints/best_model_unzip.pth')
     parser.add_argument('--data_dir', type=str, default='/media/lab505/Toshiba/MiVOS-main/Selected_data/0005')
     parser.add_argument('--save_mode', type=str, default='video')
     parser.add_argument('--guidance-thres', type=int, default=128, help="guidance input threshold")
