@@ -161,6 +161,32 @@ def get_composited_image(alpha,image,data_path,id):
 
     return composited
 
+# 视频抠图后处理
+def post_process_for_video(alpha_pred_path):
+    # alpha帧list
+    frames_num=os.listdir(alpha_pred_path).count()
+    frame_array = []
+    # 全部读取lapha灰度图
+    for n in os.listdir(alpha_pred_path):
+        print("后处理：",os.path.join(data_path, 'pred_alpha', n))
+        a= cv2.imread(os.path.join(data_path, 'pred_alpha', n),0)
+        frame_array.append(a)
+    #遍历每一帧
+    for i in range(1,frames_num-1):
+        alpha_pre=frame_array[i-1]
+        alpha_key=frame_array[i]
+        alpha_pos=frame_array[i+1]
+    #待续
+
+
+
+
+
+
+
+
+
+
 
 
 if __name__ == '__main__':
