@@ -1,4 +1,5 @@
 import os
+import time
 
 import cv2
 import numpy as np
@@ -11,9 +12,9 @@ def compare_neighbor_frame(pre_frame,obj_frame,pos_frame,index=0.1):
     # pos_frame/=255.
     for y in range(h):
         for x in range(w):
-            print(pre_frame[y][x])
-            print(obj_frame[y][x])
-            print(pos_frame[y][x])
+            # print(pre_frame[y][x])
+            # print(obj_frame[y][x])
+            # print(pos_frame[y][x])
             # print("pre-pos",abs(pre_frame[y][x]-pos_frame[y][x]))
             # print("pre-obj",abs(pre_frame[y][x]-obj_frame[y][x]))
             # print("obj-pos",abs(obj_frame[y][x]-pos_frame[y][x]))
@@ -26,6 +27,7 @@ def compare_neighbor_frame(pre_frame,obj_frame,pos_frame,index=0.1):
 
 
 if __name__ == '__main__':
+    start_time=time.time()
     pre_alpha=cv2.imread("/Users/shenronghao/PycharmProjects/IVOMatting/code-base/posprocess_photo/00011.jpg",cv2.IMREAD_GRAYSCALE)
     print(pre_alpha.shape)
     obj_alpha=cv2.imread("/Users/shenronghao/PycharmProjects/IVOMatting/code-base/posprocess_photo/00012.jpg",cv2.IMREAD_GRAYSCALE)
@@ -39,6 +41,9 @@ if __name__ == '__main__':
     image=compare_neighbor_frame(pre_alpha,obj_alpha,pos_alpha,5)
     image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     cv2.imwrite(os.path.join("/Users/shenronghao/PycharmProjects/IVOMatting/code-base/posprocess_photo", "result" + '.jpg'), image)
+    end_time=time.time()
+    print(end_time-start_time)
+    # 没有IO操作只需要2S，有IO就是15S
     # cv2.imshow('obj_alpha',obj_alpha)
     # cv2.waitKey(0)
     # print(pre_alpha)
