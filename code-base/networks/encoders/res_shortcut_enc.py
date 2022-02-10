@@ -1,3 +1,5 @@
+from distutils.version import LooseVersion
+
 import torch.nn as nn
 from utils import CONFIG
 from networks.encoders.resnet_enc import ResNet_D
@@ -37,12 +39,12 @@ class DCNv2Pack(ModulatedDeformConvPack):
             # logger.warning(f'Offset abs mean is {offset_absmean}, larger than 50.')
             print(f'Offset abs mean is {offset_absmean}, larger than 50.')
 
-        # if LooseVersion(torchvision.__version__) >= LooseVersion('0.9.0'):
+        if LooseVersion(torchvision.__version__) >= LooseVersion('0.9.0'):
             return torchvision.ops.deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
                                                  self.dilation, mask)
-        # else:
-        #     return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding,
-        #                                  self.dilation, self.groups, self.deformable_groups)
+        else:
+            return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding,
+                                         self.dilation, self.groups, self.deformable_groups)
 class FeaAlign(nn.Module):
 
     def __init__(self, channel_num=64, deformable_groups=8):

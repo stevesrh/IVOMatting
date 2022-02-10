@@ -374,7 +374,7 @@ int deform_conv_backward_parameters_cuda(
     at::Tensor columns, at::Tensor ones, int kW, int kH, int dW, int dH,
     int padW, int padH, int dilationW, int dilationH, int group,
     int deformable_group, float scale, int im2col_step) {
- 
+
 
   shape_check(input, offset, &gradOutput, gradWeight, kH, kW, dH, dW, padH,
               padW, dilationH, dilationW, group, deformable_group);
