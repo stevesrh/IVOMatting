@@ -1,3 +1,4 @@
+from distutils.version import LooseVersion
 import math
 import os
 import torch
@@ -6,10 +7,13 @@ from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 from torch.nn import functional as F
 from torch.nn.modules.utils import _pair, _single
+import torchvision
 
 BASICSR_JIT = os.getenv('BASICSR_JIT')
+# BASICSR_JIT = 'True'
 if BASICSR_JIT == 'True':
     from torch.utils.cpp_extension import load
+
     module_path = os.path.dirname(__file__)
     deform_conv_ext = load(
         'deform_conv',
@@ -112,7 +116,7 @@ class DeformConvFunction(Function):
             pad = padding[d]
             kernel = dilation[d] * (weight.size(d + 2) - 1) + 1
             stride_ = stride[d]
-            output_size += ((in_size + (2 * pad) - kernel) // stride_ + 1, )
+            output_size += ((in_size + (2 * pad) - kernel) // stride_ + 1,)
         if not all(map(lambda s: s > 0, output_size)):
             raise ValueError(f'convolution input is too small (output would be {"x".join(map(str, output_size))})')
         return output_size
@@ -375,5 +379,12 @@ class ModulatedDeformConvPack(ModulatedDeformConv):
         o1, o2, mask = torch.chunk(out, 3, dim=1)
         offset = torch.cat((o1, o2), dim=1)
         mask = torch.sigmoid(mask)
-        return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding, self.dilation,
-                                     self.groups, self.deformable_groups)
+        # return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding, self.dilation,
+        #                              self.groups, self.deformable_groups)
+
+        if LooseVersion(torchvision.__version__) >= LooseVersion('0.9.0'):
+            return torchvision.ops.deform_conv2d(x, offset, self.weight, self.bias, self.stride, self.padding,
+                                                 self.dilation, mask)
+        else:
+            return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding,
+                                         self.dilation, self.groups, self.deformable_groups)

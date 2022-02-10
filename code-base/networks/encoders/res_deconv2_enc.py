@@ -13,6 +13,8 @@ class ResShortCut_D(ResNet_D):
         self.shortcut_inplane = [first_inplane, self.midplanes, 64, 128, 256]
         self.shortcut_plane = [32, self.midplanes, 64, 128, 256]
 
+        inplanes = 64
+
         self.shortcut = nn.ModuleList()
         for stage, inplane in enumerate(self.shortcut_inplane):
             self.shortcut.append(self._make_shortcut(inplane, self.shortcut_plane[stage]))
@@ -22,7 +24,7 @@ class ResShortCut_D(ResNet_D):
                                     bias=False))
         # 第二个可变卷积，stride为1
         self.dconv3 = SpectralNorm(
-            ModulatedDeformConvPack(self.midplanes, self.inplanes, kernel_size=3, stride=self.start_stride[2],
+            ModulatedDeformConvPack(self.midplanes, inplanes, kernel_size=3, stride=self.start_stride[2],
                                     padding=1, bias=False))
 
     def _make_shortcut(self, inplane, planes):

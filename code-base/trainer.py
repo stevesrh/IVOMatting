@@ -1,4 +1,6 @@
 import os
+import time
+
 import numpy as np
 import random
 
@@ -7,12 +9,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.nn.utils as nn_utils
 import torch.backends.cudnn as cudnn
-from   torch.nn import SyncBatchNorm
+from torch.nn import SyncBatchNorm
 import torch.optim.lr_scheduler as lr_scheduler
-from   torch.nn.parallel import DistributedDataParallel
+from torch.nn.parallel import DistributedDataParallel
 
 import utils
-from   utils import CONFIG
+from utils import CONFIG
 import networks
 
 
@@ -36,25 +38,25 @@ class Trainer(object):
         self.log_config = CONFIG.log
         self.loss_dict = {'rec': None,
                           'comp': None,
-                          'smooth_l1':None,
-                          'grad':None,
-                          'gabor':None,
-                          'lap': None,}
+                          'smooth_l1': None,
+                          'grad': None,
+                          'gabor': None,
+                          'lap': None, }
         self.test_loss_dict = {'rec': None,
-                               'smooth_l1':None,
-                               'mse':None,
-                               'sad':None,
-                               'grad':None,
-                               'gabor':None}
+                               'smooth_l1': None,
+                               'mse': None,
+                               'sad': None,
+                               'grad': None,
+                               'gabor': None}
 
         self.grad_filter = torch.tensor(utils.get_gradfilter()).cuda()
         self.gabor_filter = torch.tensor(utils.get_gaborfilter(16)).cuda()
 
         self.gauss_filter = torch.tensor([[1., 4., 6., 4., 1.],
-                                        [4., 16., 24., 16., 4.],
-                                        [6., 24., 36., 24., 6.],
-                                        [4., 16., 24., 16., 4.],
-                                        [1., 4., 6., 4., 1.]]).cuda()
+                                          [4., 16., 24., 16., 4.],
+                                          [6., 24., 36., 24., 6.],
+                                          [4., 16., 24., 16., 4.],
+                                          [1., 4., 6., 4., 1.]]).cuda()
         self.gauss_filter /= 256.
         self.gauss_filter = self.gauss_filter.repeat(1, 1, 1, 1)
 
@@ -74,7 +76,6 @@ class Trainer(object):
             else:
                 utils.load_imagenet_pretrain(self.G, self.model_config.imagenet_pretrain_path)
 
-
     def build_model(self):
 
         self.G = networks.get_generator(encoder=self.model_config.arch.encoder, decoder=self.model_config.arch.decoder)
@@ -85,8 +86,8 @@ class Trainer(object):
             self.G = SyncBatchNorm.convert_sync_batchnorm(self.G)
 
         self.G_optimizer = torch.optim.Adam(self.G.parameters(),
-                                            lr = self.train_config.G_lr,
-                                            betas = [self.train_config.beta1, self.train_config.beta2])
+                                            lr=self.train_config.G_lr,
+                                            betas=[self.train_config.beta1, self.train_config.beta2])
 
         if CONFIG.dist:
             # SyncBatchNorm only supports DistributedDataParallel with single GPU per process
@@ -106,7 +107,6 @@ class Trainer(object):
         """Reset the gradient buffers."""
         self.G_optimizer.zero_grad()
 
-
     def restore_model(self, resume_checkpoint):
         """
         Restore the trained generator and discriminator.
@@ -114,7 +114,7 @@ class Trainer(object):
         :return:
         """
         pth_path = os.path.join(self.log_config.checkpoint_path, '{}.pth'.format(resume_checkpoint))
-        checkpoint = torch.load(pth_path, map_location = lambda storage, loc: storage.cuda(CONFIG.gpu))
+        checkpoint = torch.load(pth_path, map_location=lambda storage, loc: storage.cuda(CONFIG.gpu))
         self.resume_step = checkpoint['iter']
         self.logger.info('Loading the trained models from step {}...'.format(self.resume_step))
         self.G.load_state_dict(checkpoint['state_dict'], strict=True)
@@ -140,7 +140,6 @@ class Trainer(object):
         if 'loss' in checkpoint.keys():
             self.best_loss = checkpoint['loss']
 
-
     def train(self):
         data_iter = iter(self.train_dataloader)
 
@@ -160,7 +159,8 @@ class Trainer(object):
                 data_iter = iter(self.train_dataloader)
                 image_dict = next(data_iter)
 
-            image, alpha, trimap, mask = image_dict['image'], image_dict['alpha'], image_dict['trimap'], image_dict['mask']
+            image, alpha, trimap, mask = image_dict['image'], image_dict['alpha'], image_dict['trimap'], image_dict[
+                'mask']
             image = image.cuda()
             alpha = alpha.cuda()
             trimap = trimap.cuda()
@@ -194,36 +194,56 @@ class Trainer(object):
                 weight_os4 = utils.get_unknown_tensor(trimap)
                 weight_os1 = utils.get_unknown_tensor(trimap)
             elif step < self.train_config.warmup_step * 3:
-                if random.randint(0,1) == 0:
+                if random.randint(0, 1) == 0:
                     flag = True
                     weight_os4 = utils.get_unknown_tensor(trimap)
                     weight_os1 = utils.get_unknown_tensor(trimap)
                 else:
-                    weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred_os8, rand_width=CONFIG.model.self_refine_width1, train_mode=True)
-                    alpha_pred_os4[weight_os4==0] = alpha_pred_os8[weight_os4==0]
-                    weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred_os4, rand_width=CONFIG.model.self_refine_width2, train_mode=True)
-                    alpha_pred_os1[weight_os1==0] = alpha_pred_os4[weight_os1==0]
+                    weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred_os8,
+                                                                    rand_width=CONFIG.model.self_refine_width1,
+                                                                    train_mode=True)
+                    alpha_pred_os4[weight_os4 == 0] = alpha_pred_os8[weight_os4 == 0]
+                    weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred_os4,
+                                                                    rand_width=CONFIG.model.self_refine_width2,
+                                                                    train_mode=True)
+                    alpha_pred_os1[weight_os1 == 0] = alpha_pred_os4[weight_os1 == 0]
             else:
-                weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred_os8, rand_width=CONFIG.model.self_refine_width1, train_mode=True)
-                alpha_pred_os4[weight_os4==0] = alpha_pred_os8[weight_os4==0]
-                weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred_os4, rand_width=CONFIG.model.self_refine_width2, train_mode=True)
-                alpha_pred_os1[weight_os1==0] = alpha_pred_os4[weight_os1==0]
+                weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred_os8,
+                                                                rand_width=CONFIG.model.self_refine_width1,
+                                                                train_mode=True)
+                alpha_pred_os4[weight_os4 == 0] = alpha_pred_os8[weight_os4 == 0]
+                weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred_os4,
+                                                                rand_width=CONFIG.model.self_refine_width2,
+                                                                train_mode=True)
+                alpha_pred_os1[weight_os1 == 0] = alpha_pred_os4[weight_os1 == 0]
 
             """===== Calculate Loss ====="""
             if self.train_config.rec_weight > 0:
-                self.loss_dict['rec'] = (self.regression_loss(alpha_pred_os1, alpha, loss_type='l1', weight=weight_os1) * 2 +\
-                 self.regression_loss(alpha_pred_os4, alpha, loss_type='l1', weight=weight_os4) * 1 +\
-                  self.regression_loss(alpha_pred_os8, alpha, loss_type='l1', weight=weight_os8) * 1) / 5.0 * self.train_config.rec_weight
+                self.loss_dict['rec'] = (self.regression_loss(alpha_pred_os1, alpha, loss_type='l1',
+                                                              weight=weight_os1) * 2 + \
+                                         self.regression_loss(alpha_pred_os4, alpha, loss_type='l1',
+                                                              weight=weight_os4) * 1 + \
+                                         self.regression_loss(alpha_pred_os8, alpha, loss_type='l1',
+                                                              weight=weight_os8) * 1) / 5.0 * self.train_config.rec_weight
 
             if self.train_config.comp_weight > 0:
-                self.loss_dict['comp'] = (self.composition_loss(alpha_pred_os1, fg_norm, bg_norm, image, weight=weight_os1) * 2 +\
-                 self.composition_loss(alpha_pred_os4, fg_norm, bg_norm, image, weight=weight_os4) * 1 +\
-                  self.composition_loss(alpha_pred_os8, fg_norm, bg_norm, image, weight=weight_os8) * 1) / 5.0 * self.train_config.comp_weight
+                self.loss_dict['comp'] = (self.composition_loss(alpha_pred_os1, fg_norm, bg_norm, image,
+                                                                weight=weight_os1) * 2 + \
+                                          self.composition_loss(alpha_pred_os4, fg_norm, bg_norm, image,
+                                                                weight=weight_os4) * 1 + \
+                                          self.composition_loss(alpha_pred_os8, fg_norm, bg_norm, image,
+                                                                weight=weight_os8) * 1) / 5.0 * self.train_config.comp_weight
 
             if self.train_config.lap_weight > 0:
-                self.loss_dict['lap'] = (self.lap_loss(logit=alpha_pred_os1, target=alpha, gauss_filter=self.gauss_filter, loss_type='l1', weight=weight_os1) * 2 +\
-                 self.lap_loss(logit=alpha_pred_os4, target=alpha, gauss_filter=self.gauss_filter, loss_type='l1', weight=weight_os4) * 1 +\
-                  self.lap_loss(logit=alpha_pred_os8, target=alpha, gauss_filter=self.gauss_filter, loss_type='l1', weight=weight_os8) * 1) / 5.0 * self.train_config.lap_weight
+                self.loss_dict['lap'] = (self.lap_loss(logit=alpha_pred_os1, target=alpha,
+                                                       gauss_filter=self.gauss_filter, loss_type='l1',
+                                                       weight=weight_os1) * 2 + \
+                                         self.lap_loss(logit=alpha_pred_os4, target=alpha,
+                                                       gauss_filter=self.gauss_filter, loss_type='l1',
+                                                       weight=weight_os4) * 1 + \
+                                         self.lap_loss(logit=alpha_pred_os8, target=alpha,
+                                                       gauss_filter=self.gauss_filter, loss_type='l1',
+                                                       weight=weight_os8) * 1) / 5.0 * self.train_config.lap_weight
 
             for loss_key in self.loss_dict.keys():
                 if self.loss_dict[loss_key] is not None and loss_key in ['rec', 'comp', 'lap']:
@@ -242,7 +262,7 @@ class Trainer(object):
                 else:
                     max_grad = nn_utils.clip_grad_norm_(self.G.parameters(), 2 * moving_max_grad)
                     moving_max_grad = moving_max_grad * moving_grad_moment + max_grad * (
-                                1 - moving_grad_moment)
+                            1 - moving_grad_moment)
 
             """===== Update Parameters ====="""
             self.G_optimizer.step()
@@ -280,10 +300,10 @@ class Trainer(object):
                         self.tb_logger.scalar_summary('Moving_Max_Grad', moving_max_grad, step)
                         self.tb_logger.scalar_summary('Max_Grad', max_grad, step)
 
-
             """===== TEST ====="""
             if self.train_config.val_step > 0:
-                if ((step % self.train_config.val_step) == 0 or step == self.train_config.total_step):# and step > start:
+                if ((
+                        step % self.train_config.val_step) == 0 or step == self.train_config.total_step):  # and step > start:
                     self.G.eval()
                     test_loss = 0
                     log_info = ""
@@ -296,7 +316,8 @@ class Trainer(object):
 
                     with torch.no_grad():
                         for image_dict in self.test_dataloader:
-                            image, alpha, trimap, mask = image_dict['image'], image_dict['alpha'], image_dict['trimap'], image_dict['mask']
+                            image, alpha, trimap, mask = image_dict['image'], image_dict['alpha'], image_dict['trimap'], \
+                                                         image_dict['mask']
                             alpha_shape = image_dict['alpha_shape']
                             image = image.cuda()
                             alpha = alpha.cuda()
@@ -305,18 +326,22 @@ class Trainer(object):
 
                             pred = self.G(image, mask)
 
-                            alpha_pred_os1, alpha_pred_os4, alpha_pred_os8 = pred['alpha_os1'], pred['alpha_os4'], pred['alpha_os8']
+                            alpha_pred_os1, alpha_pred_os4, alpha_pred_os8 = pred['alpha_os1'], pred['alpha_os4'], pred[
+                                'alpha_os8']
                             alpha_pred = alpha_pred_os8.clone().detach()
-                            weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred, rand_width=CONFIG.model.self_refine_width1, train_mode=False)
-                            alpha_pred[weight_os4>0] = alpha_pred_os4[weight_os4>0]
-                            weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred, rand_width=CONFIG.model.self_refine_width2, train_mode=False)
-                            alpha_pred[weight_os1>0] = alpha_pred_os1[weight_os1>0] 
-                            
+                            weight_os4 = utils.get_unknown_tensor_from_pred(alpha_pred,
+                                                                            rand_width=CONFIG.model.self_refine_width1,
+                                                                            train_mode=False)
+                            alpha_pred[weight_os4 > 0] = alpha_pred_os4[weight_os4 > 0]
+                            weight_os1 = utils.get_unknown_tensor_from_pred(alpha_pred,
+                                                                            rand_width=CONFIG.model.self_refine_width2,
+                                                                            train_mode=False)
+                            alpha_pred[weight_os1 > 0] = alpha_pred_os1[weight_os1 > 0]
 
                             h, w = alpha_shape
                             alpha_pred = alpha_pred[..., :h, :w]
                             trimap = trimap[..., :h, :w]
-                            
+
                             weight = utils.get_unknown_tensor(trimap)
                             weight[...] = 1
 
@@ -326,7 +351,7 @@ class Trainer(object):
 
                             if self.train_config.rec_weight > 0:
                                 self.test_loss_dict['rec'] += self.regression_loss(alpha_pred, alpha, weight=weight) \
-                                                            * self.train_config.rec_weight
+                                                              * self.train_config.rec_weight
 
                     # reduce losses from GPUs
                     if CONFIG.dist:
@@ -338,14 +363,14 @@ class Trainer(object):
                         if self.test_loss_dict[loss_key] is not None:
                             self.test_loss_dict[loss_key] /= len(self.test_dataloader)
                             # logging
-                            log_info += loss_key.upper()+": {:.4f} ".format(self.test_loss_dict[loss_key])
-                            self.tb_logger.scalar_summary('Loss_'+loss_key.upper(),
-                                                        self.test_loss_dict[loss_key], step, phase='test')
+                            log_info += loss_key.upper() + ": {:.4f} ".format(self.test_loss_dict[loss_key])
+                            self.tb_logger.scalar_summary('Loss_' + loss_key.upper(),
+                                                          self.test_loss_dict[loss_key], step, phase='test')
 
                             if loss_key in ['rec']:
                                 test_loss += self.test_loss_dict[loss_key]
 
-                    self.logger.info("TEST: LOSS: {:.4f} ".format(test_loss)+log_info)
+                    self.logger.info("TEST: LOSS: {:.4f} ".format(test_loss) + log_info)
                     self.tb_logger.scalar_summary('Loss', test_loss, step, phase='test')
 
                     # if self.model_config.trimap_channel == 3:
@@ -353,10 +378,10 @@ class Trainer(object):
                     # alpha_pred[trimap==2] = 1
                     # alpha_pred[trimap==0] = 0
                     image_set = {'image': (utils.normalize_image(image[-1, ...]).data.cpu().numpy()
-                                        * 255).astype(np.uint8),
-                                'mask': (mask[-1, ...].data.cpu().numpy() * 255).astype(np.uint8),
-                                'alpha': (alpha[-1, ...].data.cpu().numpy() * 255).astype(np.uint8),
-                                'alpha_pred': (alpha_pred[-1, ...].data.cpu().numpy() * 255).astype(np.uint8)}
+                                           * 255).astype(np.uint8),
+                                 'mask': (mask[-1, ...].data.cpu().numpy() * 255).astype(np.uint8),
+                                 'alpha': (alpha[-1, ...].data.cpu().numpy() * 255).astype(np.uint8),
+                                 'alpha_pred': (alpha_pred[-1, ...].data.cpu().numpy() * 255).astype(np.uint8)}
 
                 self.tb_logger.image_summary(image_set, step, phase='test')
 
@@ -374,9 +399,8 @@ class Trainer(object):
                         and CONFIG.local_rank == 0 and (step > start):
                     self.logger.info('Saving the trained models from step {}...'.format(iter))
                     self.save_model("latest_model", step, loss)
-            
-            torch.cuda.empty_cache()
 
+            torch.cuda.empty_cache()
 
     def save_model(self, checkpoint_name, iter, loss):
         """Restore the trained generator and discriminator."""
@@ -387,7 +411,6 @@ class Trainer(object):
             'opt_state_dict': self.G_optimizer.state_dict(),
             'lr_state_dict': self.G_scheduler.state_dict()
         }, os.path.join(self.log_config.checkpoint_path, '{}.pth'.format(checkpoint_name)))
-
 
     @staticmethod
     def regression_loss(logit, target, loss_type='l1', weight=None):
@@ -414,13 +437,11 @@ class Trainer(object):
             else:
                 raise NotImplementedError("NotImplemented loss type {}".format(loss_type))
 
-
     @staticmethod
     def smooth_l1(logit, target, weight):
-        loss = torch.sqrt((logit * weight - target * weight)**2 + 1e-6)
+        loss = torch.sqrt((logit * weight - target * weight) ** 2 + 1e-6)
         loss = torch.sum(loss) / (torch.sum(weight) + 1e-8)
         return loss
-
 
     @staticmethod
     def mse(logit, target, weight):
@@ -463,23 +484,25 @@ class Trainer(object):
         Based on FBA Matting implementation:
         https://gist.github.com/MarcoForte/a07c40a2b721739bb5c5987671aa5270
         '''
+
         def conv_gauss(x, kernel):
-            x = F.pad(x, (2,2,2,2), mode='reflect')
+            x = F.pad(x, (2, 2, 2, 2), mode='reflect')
             x = F.conv2d(x, kernel, groups=x.shape[1])
             return x
-        
+
         def downsample(x):
             return x[:, :, ::2, ::2]
-        
+
         def upsample(x, kernel):
             N, C, H, W = x.shape
-            cc = torch.cat([x, torch.zeros(N,C,H,W).cuda()], dim = 3)
-            cc = cc.view(N, C, H*2, W)
-            cc = cc.permute(0,1,3,2)
-            cc = torch.cat([cc, torch.zeros(N, C, W, H*2).cuda()], dim = 3)
-            cc = cc.view(N, C, W*2, H*2)
-            x_up = cc.permute(0,1,3,2)
-            return conv_gauss(x_up, kernel=4*gauss_filter)
+            cc = torch.cat([x, torch.zeros(N, C, H, W).cuda()], dim=3)
+            cc = cc.view(N, C, H * 2, W)
+            cc = cc.permute(0, 1, 3, 2)
+            cc = torch.cat([cc, torch.zeros(N, C, W, H * 2).cuda()], dim=3)
+            cc = cc.view(N, C, W * 2, H * 2)
+            x_up = cc.permute(0, 1, 3, 2)
+            return conv_gauss(x_up, kernel=4 * gauss_filter)
+
         def lap_pyramid(x, kernel, max_levels=3):
             current = x
             pyr = []
@@ -491,7 +514,7 @@ class Trainer(object):
                 pyr.append(diff)
                 current = down
             return pyr
-        
+
         def weight_pyramid(x, max_levels=3):
             current = x
             pyr = []
@@ -500,11 +523,13 @@ class Trainer(object):
                 pyr.append(current)
                 current = down
             return pyr
-        
-        pyr_logit = lap_pyramid(x = logit, kernel = gauss_filter, max_levels = 5)
-        pyr_target = lap_pyramid(x = target, kernel = gauss_filter, max_levels = 5)
+
+        pyr_logit = lap_pyramid(x=logit, kernel=gauss_filter, max_levels=5)
+        pyr_target = lap_pyramid(x=target, kernel=gauss_filter, max_levels=5)
         if weight is not None:
-            pyr_weight = weight_pyramid(x = weight, max_levels = 5)
-            return sum(Trainer.regression_loss(A[0], A[1], loss_type=loss_type, weight=A[2]) * (2**i) for i, A in enumerate(zip(pyr_logit, pyr_target, pyr_weight)))
+            pyr_weight = weight_pyramid(x=weight, max_levels=5)
+            return sum(Trainer.regression_loss(A[0], A[1], loss_type=loss_type, weight=A[2]) * (2 ** i) for i, A in
+                       enumerate(zip(pyr_logit, pyr_target, pyr_weight)))
         else:
-            return sum(Trainer.regression_loss(A[0], A[1], loss_type=loss_type, weight=None) * (2**i) for i, A in enumerate(zip(pyr_logit, pyr_target)))
+            return sum(Trainer.regression_loss(A[0], A[1], loss_type=loss_type, weight=None) * (2 ** i) for i, A in
+                       enumerate(zip(pyr_logit, pyr_target)))
