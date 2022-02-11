@@ -124,7 +124,7 @@ class TensorBoardLogger(object):
             sum_name = '{}/{}'.format(phase.capitalize(), tag)
             self.writer.add_scalar(sum_name, value, step)
 
-    def image_summary(self, image_set, step, phase='train', save_val=True):
+    def image_summary(self, image_set, step, phase='train', save_val=True, save_freq=2000):
         """
         Record image in tensorboard
         The input image should be a numpy array with shape (C, H, W) like a torch tensor
@@ -132,6 +132,7 @@ class TensorBoardLogger(object):
         :param step:
         :param phase:
         :param save_val: save images in folder in validation or testing
+        :param save_freq:
         :return:
         """
         if CONFIG.local_rank == 0:
@@ -147,7 +148,7 @@ class TensorBoardLogger(object):
                     image_numpy = image_numpy.transpose([2, 0, 1])
                 self.writer.add_image(sum_name, image_numpy, step)
 
-            if (phase=='test') and save_val:
+            if (phase=='test') and save_val and (step % save_freq == 0):
                 tags = list(image_set.keys())
                 image_pack = self._reshape_rgb(image_set[tags[0]])
                 image_pack = cv2.resize(image_pack, (512, 512), interpolation=cv2.INTER_NEAREST)

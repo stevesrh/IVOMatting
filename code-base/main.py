@@ -1,21 +1,20 @@
 import os
 import toml
 import argparse
-from   pprint import pprint
+from pprint import pprint
 
 import torch
-from   torch.utils.data import DataLoader
+from torch.utils.data import DataLoader
 
 import utils
-from   utils import CONFIG
-from   trainer import Trainer
-from   dataloader.image_file import ImageFileTrain, ImageFileTest
-from   dataloader.data_generator import DataGenerator
-from   dataloader.prefetcher import Prefetcher
+from utils import CONFIG
+from trainer import Trainer
+from dataloader.image_file import ImageFileTrain, ImageFileTest
+from dataloader.data_generator import DataGenerator
+from dataloader.prefetcher import Prefetcher
 
 
 def main():
-
     # Train or Test
     if CONFIG.phase.lower() == "train":
         # set distributed training
