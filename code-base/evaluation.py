@@ -6,9 +6,9 @@ import argparse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--pred-dir', type=str, default='./predDIM/', help="pred alpha dir")
-    parser.add_argument('--label-dir', type=str, default='/export/ccvl12b/qihang/MGMatting/data/Combined_Dataset/Test_set/alpha_copy/', help="GT alpha dir")
-    parser.add_argument('--trimap-dir', type=str, default='/export/ccvl12b/qihang/MGMatting/data/Combined_Dataset/Test_set/trimaps/', help="trimap dir")
+    parser.add_argument('--pred-dir', type=str, default='/home/lab505/PycharmProjects/IVOMatting/code-base/output/DCONV/latest/MGMatting-Dconv-DIM-100k_latest_model.pth', help="pred alpha dir")
+    parser.add_argument('--label-dir', type=str, default='/home/lab505/PycharmProjects/IVOMatting/code-base/Combined_Dataset/Test_set/Adobe-licensed images/alpha_copy', help="GT alpha dir")
+    parser.add_argument('--trimap-dir', type=str, default='/home/lab505/PycharmProjects/IVOMatting/code-base/Combined_Dataset/Test_set/Adobe-licensed images/trimaps', help="trimap dir")
 
     args = parser.parse_args()
 
