@@ -1,12 +1,12 @@
 # Refer to utils/config.py for definition and options.
 
-version = "MGMatting-DIM-100k"
+version = "MGMatting-DVM-100k"
 dist = false
 
 [model]
 trimap_channel = 3
 mask_channel = 1
-batch_size = 10
+batch_size = 1
 imagenet_pretrain = true
 imagenet_pretrain_path = "pretrain/model_best_resnet34_En_nomixup.pth"
 self_refine_width1 = 30
@@ -16,7 +16,7 @@ self_refine_width2 = 15
     decoder = "res_shortcut_decoder_22"
 
 [train]
-total_step = 100000
+total_step = 2000000
 warmup_step = 5000
 val_step = 5000
 clip_grad = true
