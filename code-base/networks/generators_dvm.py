@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 
-from   utils import CONFIG
-from   networks import encoders, decoders, ops
+from utils import CONFIG
+from networks import encoders, decoders, ops
+from .encoders.res_afmodule_enc import AFModule, ResAFModule
+from .encoders import BasicBlock
 
 
 # 原始的MGMatting生成器
@@ -31,7 +33,7 @@ class Generator(nn.Module):
 
 
 def get_generator(encoder, decoder):
-    generator = Generator(encoder=encoder, decoder=decoder)
+    generator = GeneratorForVideo(encoder=encoder, decoder=decoder)
     return generator
 
 
@@ -44,7 +46,7 @@ class GeneratorForVideo(nn.Module):
         if encoder not in encoders.__all__:
             raise NotImplementedError("Unknown Encoder {}".format(encoder))
         # encoder
-        self.encoder= encoders.__dict__[encoder]()
+        self.encoder = encoders.__dict__[encoder]()
 
         # aspp
         self.aspp = ops.ASPP(in_channel=512, out_channel=512)
@@ -52,28 +54,38 @@ class GeneratorForVideo(nn.Module):
         if decoder not in decoders.__all__:
             raise NotImplementedError("Unknown Decoder {}".format(decoder))
         self.decoder = decoders.__dict__[decoder]()
+
+        self.resafmodule=ResAFModule(BasicBlock, [3, 4, 4, 2])
+
     # 修改后网络结构
     def forward(self, image, guidance):
         # image,guidance表
-        input1 = torch.cat((image[0], guidance[0]), dim=1)
-        input2 = torch.cat((image[1], guidance[1]), dim=1)
-        input3 = torch.cat((image[2], guidance[2]), dim=1)
-        embedding1, mid_fea1 = self.encoder(input1)
-        embedding2, mid_fea2 = self.encoder(input2)
-        embedding3, mid_fea3 = self.encoder(input3)
-        # process mid_feature
-        mid_fea_in = torch.cat((mid_fea1+mid_fea2+mid_fea3),dim=1)
-        # aggregation module
-        mid_fea_out = self.afmodule(mid_fea_in)
+        img_mask, embedding, mid_fea_img, mid_fea, img = [None, None, None], [None, None, None], [None, None, None], \
+                                                         [None, None, None], [None, None, None]
+        for index in range(3):
+            img_mask[index] = torch.cat([image[index:index + 1], guidance[index:index + 1]], dim=1)
 
-        out = self.aspp(embedding2)
-        pred = self.decoder(out, mid_fea_out)
+            embedding[index], mid_fea_img[index] = self.encoder(img_mask[index])
+
+            mid_fea[index] = mid_fea_img[index]['shortcut']
+            img[index] = image[index:index + 1]
+
+
+        af_fea = {'shortcut':[]}
+        for index in range(len(mid_fea[0])):
+            af_fea['shortcut'].append(self.resafmodule.afmodule_list[index](mid_fea[0][index], mid_fea[1][index], mid_fea[2][index]))
+
+
+        # process mid_feature
+        # aggregation module
+
+        out = self.aspp(embedding[1])
+        pred = self.decoder(out, af_fea)
         return pred
 
 
 def get_generator_for_video(encoder, decoder):
     generator = GeneratorForVideo(encoder=encoder, decoder=decoder)
     return generator
-
 
 # 针对图片修改的MGMatting

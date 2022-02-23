@@ -19,7 +19,7 @@ self_refine_width2 = 15
 total_step = 300000
 warmup_step = 5000
 #val_step = 5000
-val_step = 100
+val_step = 5000
 clip_grad = true
 G_lr = 1e-3
 rec_weight = 1.0
@@ -46,10 +46,10 @@ real_world_aug = false
 
 [log]
 tensorboard_path = "./logs/tensorboard"
-tensorboard_step = 100
+tensorboard_step = 1000
 tensorboard_image_step = 2000
 logging_path = "./logs/stdout"
-logging_step =  2000
+logging_step =  10
 logging_level = "INFO"
 checkpoint_path = "./checkpoints"
 checkpoint_step = 2000

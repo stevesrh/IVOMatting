@@ -1,6 +1,6 @@
 # Refer to utils/config.py for definition and options.
 
-version = "MGMatting-DVM-100k"
+version = "MGMatting-DVM-2000k"
 dist = false
 
 [model]
@@ -12,13 +12,13 @@ imagenet_pretrain_path = "pretrain/model_best_resnet34_En_nomixup.pth"
 self_refine_width1 = 30
 self_refine_width2 = 15
     [model.arch]
-    encoder = "res_shortcut_encoder_29"
+    encoder = "res_afmodule_encoder"
     decoder = "res_shortcut_decoder_22"
 
 [train]
-total_step = 2000000
-warmup_step = 5000
-val_step = 5000
+total_step = 200000
+warmup_step = 10000
+val_step = 3000
 clip_grad = true
 G_lr = 1e-3
 rec_weight = 1.0
@@ -45,10 +45,10 @@ real_world_aug = false
 
 [log]
 tensorboard_path = "./logs/tensorboard"
-tensorboard_step = 100
-tensorboard_image_step = 2000
+tensorboard_step = 1000
+tensorboard_image_step = 1000
 logging_path = "./logs/stdout"
-logging_step =  2000
+logging_step =  10
 logging_level = "INFO"
 checkpoint_path = "./checkpoints"
 checkpoint_step = 2000

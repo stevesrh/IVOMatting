@@ -7,6 +7,9 @@
           <mappings>
             <mapping deploy="/code-base" local="$PROJECT_DIR$/code-base" web="/" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/code-base/Combined_Dataset/Test_set/Adobe-licensed images/merged" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

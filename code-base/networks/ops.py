@@ -106,7 +106,8 @@ class ASPP(nn.Module):
         self.aspp2_bn = norm(mid_channel)
         self.aspp3_bn = norm(mid_channel)
         self.aspp4_bn = norm(mid_channel)
-        self.aspp5_bn = norm(mid_channel)
+        # self.aspp5_bn = norm(mid_channel)
+        self.aspp5_bn = nn.GroupNorm(1, mid_channel)
         self.conv2 = conv(mid_channel * 5, out_channel, kernel_size=1, stride=1,
                                bias=False)
         self.bn2 = norm(out_channel)

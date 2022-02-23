@@ -547,4 +547,6 @@ class DataGenerator(Dataset):
         if self.phase == "train":
             return len(self.bg)
         else:
-            return len(self.alpha)
+            # return len(self.alpha)
+            # change by xiang
+            return 10

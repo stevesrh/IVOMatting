@@ -44,8 +44,8 @@ def main():
         # train_dataset = DataGenerator(train_image_file, phase='train')
         # test_dataset = DataGenerator(test_image_file, phase='val')
 
-        train_path = r'/media/lab505/TOSHIBA2/DVM/train_dataset_frame'
-        test_path = r'/media/lab505/TOSHIBA2/DVM/test_dataset_frame'
+        train_path = r'/media/lab505/Toshiba/DVM_Selected/train_dataset_frame'
+        test_path = r'/media/lab505/Toshiba/DVM_Selected/test_dataset_frame'
 
         train_dataset = DataGenerator(train_path, phase='train')
         test_dataset = DataGenerator(test_path, phase='val')
